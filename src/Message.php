@@ -1136,15 +1136,12 @@ class Message{
 	 */
 	public function delete(){
 		try {
+
+            // Set the DELETED flag on the message identified by the UID.
+            $this->setFlag('Deleted');
+
 			// Mark the message as deleted
-            $result = imap_delete($this->Connection, $this->UID, FT_UID);
-
-            if ($result) {
-            // Expunge deleted messages
-            imap_expunge($this->Connection);
-            }
-
-            return $result;
+            return imap_delete($this->Connection, $this->UID, FT_UID);
 		} catch (Exception $e) {
 			$this->Logger->error('IMAP Error: '.$e->getMessage());
 		}
@@ -1173,8 +1170,6 @@ class Message{
 			$result = imap_mail_copy($this->Connection, $this->getUid(), $folder, CP_UID);
 
 			if($result){
-				// Expunge deleted messages
-	            imap_expunge($this->Connection);
 
 				// Return true
 				return true;
