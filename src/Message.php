@@ -1229,11 +1229,15 @@ class Message{
 	 * @return string|boolean File path if the file was saved successfully, false otherwise.
      * @throws Exception
 	 */
-	public function save() {
+	public function save($directory = null) {
 		try{
 
-			// Generate directory
-            $directory = $this->Directory . DIRECTORY_SEPARATOR . $this->getUid();
+            // Check if path was provided
+            if($directory === null){
+
+                // Generate directory
+                $directory = $this->Directory . DIRECTORY_SEPARATOR . $this->getUid();
+            }
 
 			// Generate file path
             $filepath = $directory . DIRECTORY_SEPARATOR . $this->getId() . ".eml";
