@@ -531,7 +531,7 @@ class IMAP{
             }
 
 			// Create the folder
-			if(imap_createmailbox($this->Connection, imap_utf7_encode($folder))){
+			if(imap_createmailbox($this->Connection, imap_utf7_encode($this->buildConnectionString($this->Host,$this->Port,$this->Encryption) . $folder))){
 
 				// Return True
 				return true;
