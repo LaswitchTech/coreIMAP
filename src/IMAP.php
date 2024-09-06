@@ -243,8 +243,12 @@ class IMAP{
      * @return void
      */
     public function close(){
+
         // Check if a connection exist
         if($this->Connection){
+
+            // Expunge deleted messages
+            imap_expunge($this->Connection);
 
             // Close the active connection
             imap_close($this->Connection);
