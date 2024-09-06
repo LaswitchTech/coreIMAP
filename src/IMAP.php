@@ -207,7 +207,7 @@ class IMAP{
             $this->Logger->debug(self::Prefix . " Connection String: {$connectionString}");
 
             // Connect to IMAP server
-            $Connection = imap_open($connectionString, $username, $password, OP_READONLY, 0);
+            $Connection = imap_open($connectionString, $username, $password, 0, 0);
 
             // Check if connection was established
             if($Connection){
@@ -495,7 +495,7 @@ class IMAP{
             }
 
             // Open the folder
-            if (!imap_reopen($this->Connection, $this->String . $folder, OP_READONLY, 0)) {
+            if (!imap_reopen($this->Connection, $this->String . $folder, 0, 0)) {
                 throw new Exception("Unable to open folder {$folder}");
             }
 
