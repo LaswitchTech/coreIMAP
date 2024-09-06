@@ -52,7 +52,6 @@ class Attachment{
         // Set Properties
         $this->Attachment = $Attachment;
         $this->Connection = $Connection;
-        $this->Logger = $Logger;
         $this->Directory = $Directory;
     }
 
