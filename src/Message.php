@@ -78,50 +78,6 @@ class Message{
 		return ($this->Connection);
 	}
 
-    /**
-     * Get the list of available folders.
-     *
-     * @return array|void
-     * @throws Exception
-     */
-	private function getFolders(){
-		try {
-
-			// Check if a connection was established
-			if(!$this->isConnected()){
-				throw new Exception("No connection are established");
-			}
-
-			// Return the existing folders if already retrieved
-			if(count($this->Folders) > 0){
-				return $this->Folders;
-			}
-
-			// Get the list of available folders
-			$this->Folders = imap_list($this->Connection, $this->String, '*');
-
-			// Validate Folders
-			if(!$this->Folders) {
-				$this->Folders = array();
-			}
-
-			// Sanitize Folders
-			$Folders = [];
-			foreach($this->Folders as $Folder){
-				$Folders[] = str_replace($this->String,'',$Folder);
-			}
-			$this->Folders = $Folders;
-
-			// Debug Information
-			$this->Logger->debug("IMAP Folders: " . PHP_EOL . json_encode($this->Folders, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
-			// Return the list of available folders
-			return $this->Folders;
-		} catch (Exception $e) {
-			$this->Logger->error('IMAP Error: '.$e->getMessage());
-		}
-	}
-
 	/**
 	 * Get the headers of a message.
 	 *
@@ -1092,9 +1048,6 @@ class Message{
             if(!is_string($folder)) {
                 throw new Exception("This folder is invalid");
             }
-            if(!in_array($folder,$this->getFolders())) {
-                throw new Exception("This folder does not exist");
-            }
 
 			// Copy the message
 			$result = imap_mail_copy($this->Connection, $this->getUid(), $folder, CP_UID);
@@ -1134,9 +1087,6 @@ class Message{
 			// Validate Folder
             if(!is_string($folder)) {
                 throw new Exception("This folder is invalid");
-            }
-            if(!in_array($folder,$this->getFolders())) {
-                throw new Exception("This folder does not exist");
             }
 
 			// Move the message
