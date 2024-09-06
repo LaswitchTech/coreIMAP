@@ -724,7 +724,7 @@ class IMAP{
 			$uids = imap_search($this->Connection, $criteria, SE_UID);
 
             // Reverse order if needed
-            if($reverse){
+            if($reverse && is_array($uids)){
                 $uids = array_reverse($uids);
             }
 
