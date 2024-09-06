@@ -91,16 +91,31 @@ class Message{
             // Return Headers
             return $this->Headers;
         } else {
-            $headers = imap_rfc822_parse_headers($this->Message);
-            $result = array();
 
-            foreach ($headers as $header => $value) {
+            // Use imap_rfc822_parse_headers for standard headers
+            $parsedHeaders = imap_rfc822_parse_headers($this->Message);
+            $result = [];
+
+            // Process parsed headers into an associative array
+            foreach ($parsedHeaders as $header => $value) {
                 if (is_array($value)) {
                     foreach ($value as $subvalue) {
                         $result[$header][] = $subvalue;
                     }
                 } else {
                     $result[$header] = $value;
+                }
+            }
+
+            // Fetch raw headers for custom or non-standard headers
+            $rawHeaders = imap_fetchheader($this->Connection, $this->UID, FT_UID);
+
+            // Split headers into lines and look for custom headers (starting with 'X-' or any custom prefix)
+            $rawHeadersArray = explode("\n", $rawHeaders);
+            foreach ($rawHeadersArray as $headerLine) {
+                if (strpos($headerLine, 'X-') === 0) {
+                    list($key, $value) = explode(":", $headerLine, 2);
+                    $result[trim($key)] = trim($value);
                 }
             }
 
