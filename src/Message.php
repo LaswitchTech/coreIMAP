@@ -820,23 +820,33 @@ class Message{
                         // Debug Information
                         $this->Logger->debug("contentType: {$contentType}");
 
-                        // Keep body parts if usefull
-                        if(in_array($contentType,['text/plain','text/html'])){
-                            $bodies[$contentType] = $part;
+                        // Keep body parts if useful
+                        if (in_array($contentType, ['text/plain', 'text/html'])) {
+                            // Check for content transfer encoding
+                            preg_match('/Content-Transfer-Encoding:\s*([^\s;]+)/i', $part, $encodingMatches);
+                            $encoding = isset($encodingMatches[1]) ? strtolower(trim($encodingMatches[1])) : null;
+
+                            // Store the body and its encoding
+                            $bodies[$contentType] = [
+                                'content' => $part,
+                                'encoding' => $encoding
+                            ];
                         }
                     }
                 }
 
                 // Select a part as the message
-                if(isset($bodies['text/html'])){
-                    $content = $bodies['text/html'];
+                if (isset($bodies['text/html'])) {
+                    $selectedBody = $bodies['text/html'];
+                } elseif (isset($bodies['text/plain'])) {
+                    $selectedBody = $bodies['text/plain'];
                 } else {
-                    if(isset($bodies['text/plain'])){
-                        $content = $bodies['text/plain'];
-                    } else {
-                        throw new Exception("Unable to identify the body");
-                    }
+                    throw new Exception("Unable to identify the body");
                 }
+
+                // Extract content and encoding
+                $content = $selectedBody['content'];
+                $encoding = $selectedBody['encoding'];
 
                 // Split the message into an array of lines
                 $lines = preg_split('/\r\n|\r|\n/', $content);
@@ -861,8 +871,15 @@ class Message{
                 // Trim $body
                 $body = trim($body);
 
+                // Decode body based on the content transfer encoding
+                if ($encoding === 'base64') {
+                    $body = base64_decode($body);
+                } elseif ($encoding === 'quoted-printable') {
+                    $body = quoted_printable_decode($body);
+                }
+
                 // Debug Information
-                $this->Logger->debug("IMAP Message Body: " . PHP_EOL . $body);
+                $this->Logger->debug("IMAP Decoded Message Body: " . PHP_EOL . $body);
 
                 // Store Body
                 $this->Body = $body;
