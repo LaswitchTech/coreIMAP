@@ -181,7 +181,7 @@ class IMAP{
      * @return string|void
      * @throws Exception
      */
-    public function connect($username, $password, $host, $port = 993, $encryption = 'ssl', $isSelfSigned = false){
+    public function connect($username, $password, $host, $port = 993, $encryption = 'ssl', $isSelfSigned = true){
         try {
 
             // If a connection is already established return it
@@ -276,7 +276,7 @@ class IMAP{
      * @return string|void
      * @throws Exception
      */
-    private function buildConnectionString($host, $port = 993, $encryption = 'ssl', $isSelfSigned = false){
+    private function buildConnectionString($host, $port = 993, $encryption = 'ssl', $isSelfSigned = true){
         try {
 
             // Open connection string
