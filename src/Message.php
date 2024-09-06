@@ -131,6 +131,92 @@ class Message{
 	}
 
 	/**
+	 * Get the Size of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getSize(){
+
+        // Check if message Sender was already retrieved
+        if($this->Overview === null){
+
+            // Retrieve Overview
+            $this->getOverview();
+        }
+
+        // Return Size
+        return $this->Overview['size'];
+	}
+
+	/**
+	 * Get the in-reply-to mid of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getInReplyTo(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+        // Return
+        return str_replace(['<','>'],'',$this->Headers['in_reply_to']);
+	}
+
+	/**
+	 * Get the References mids of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getReferences(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+
+        // Return
+        return explode(' ',str_replace(['<','>'],'',$this->Headers['references']));
+	}
+
+	/**
+	 * Get the Customs Headers of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getCustoms(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+        // Set a list of standard headers
+        $standardHeaders = ['date','Date','to','toaddress','sender','senderaddress','from','fromaddress','sender','cc','bcc','references','in_reply_to','reply_to','reply_toaddress','subject','Subject','date','message_id'];
+
+        // Initialize Customs
+        $Customs = [];
+
+        // Sanitize Headers
+        foreach($this->Headers as $key => $value){
+            if(!in_array($key,$standardHeaders)){
+                $Customs[$key] = json_decode($value,true) ?? $value;
+            }
+        }
+
+        // Return Size
+        return $Customs;
+	}
+
+	/**
 	 * Get the To addresses of a message.
 	 *
 	 * @return array|void
