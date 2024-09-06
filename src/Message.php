@@ -85,7 +85,7 @@ class Message{
 	 */
 	private function getHeaders(){
 
-        // Check if message headers was already retrieved
+        // Check if message headers were already retrieved
         if($this->Headers){
 
             // Return Headers
@@ -685,22 +685,19 @@ class Message{
 		}
 	}
 
-	/**
-	 * Retrieve the body of a message.
-	 *
-	 * @return string|null
-	 * @throws Exception
-	 */
-	public function getBody() {
+    /**
+     * Retrieve the body of a message.
+     *
+     * @return string|null
+     * @throws Exception
+     */
+    public function getBody() {
 
         // Check if message body was already retrieved
-        if($this->Body){
-
-            // Return Body
+        if ($this->Body) {
             return $this->Body;
         } else {
-            try{
-
+            try {
                 // Initialize $bodies
                 $bodies = [];
 
@@ -708,10 +705,10 @@ class Message{
                 $parts = $this->getParts($this->Message);
 
                 // Find Body Parts
-                foreach($parts as $part){
+                foreach ($parts as $part) {
                     // Find the content type of the part
                     preg_match('/Content-Type:\s*([^\s;]+)/i', $part, $matches);
-                    if(isset($matches[1])){
+                    if (isset($matches[1])) {
                         $contentType = strtolower(trim($matches[1]));
 
                         // Debug Information
@@ -744,12 +741,12 @@ class Message{
                 // Find the first line of the body
                 $start = false;
                 $body = '';
-                foreach($lines as $line){
-                    if($line !== null && $line === ""){
+                foreach ($lines as $line) {
+                    if ($line !== null && $line === "") {
                         // Found the start of the body
                         $start = true;
                     }
-                    if($start){
+                    if ($start) {
                         // Concatenate the lines to form the body
                         $body .= $line . PHP_EOL;
                     }
@@ -767,10 +764,10 @@ class Message{
                 // Return Body
                 return $this->Body;
             } catch (Exception $e) {
-                $this->Logger->error('IMAP Error: '.$e->getMessage());
+                $this->Logger->error('IMAP Error: ' . $e->getMessage());
             }
         }
-	}
+    }
 
 	/**
 	 * Get Overview of message.
@@ -1090,16 +1087,14 @@ class Message{
             }
 
 			// Move the message
-			$result = imap_mail_move($this->Connection, $this->getUid(), $folder, CP_UID);
-
-			if($result){
-				// Expunge deleted messages
-	            imap_expunge($this->Connection);
+			if(imap_mail_move($this->Connection, $this->getUid(), $folder, CP_UID)){
 
 				// Return true
 				return true;
 			} else {
-				throw new Exception("Unable to copy message into the folder specified");
+
+                // Log error
+				throw new Exception("Unable to move message into the folder specified");
 			}
 
 		} catch (Exception $e) {
