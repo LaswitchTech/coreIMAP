@@ -181,7 +181,7 @@ class IMAP{
      * @return string|void
      * @throws Exception
      */
-    public function connect($username, $password, $host, $port = 993, $encryption = 'ssl', $isSelfSigned = false){
+    public function connect($username, $password, $host, $port = 993, $encryption = 'ssl', $isSelfSigned = true){
         try {
 
             // If a connection is already established return it
@@ -207,7 +207,7 @@ class IMAP{
             $this->Logger->debug(self::Prefix . " Connection String: {$connectionString}");
 
             // Connect to IMAP server
-            $Connection = imap_open($connectionString, $username, $password, OP_READONLY, 0);
+            $Connection = imap_open($connectionString, $username, $password, 0, 0);
 
             // Check if connection was established
             if($Connection){
@@ -243,8 +243,12 @@ class IMAP{
      * @return void
      */
     public function close(){
+
         // Check if a connection exist
         if($this->Connection){
+
+            // Expunge deleted messages
+            imap_expunge($this->Connection);
 
             // Close the active connection
             imap_close($this->Connection);
@@ -276,7 +280,7 @@ class IMAP{
      * @return string|void
      * @throws Exception
      */
-    private function buildConnectionString($host, $port = 993, $encryption = 'ssl', $isSelfSigned = false){
+    private function buildConnectionString($host, $port = 993, $encryption = 'ssl', $isSelfSigned = true){
         try {
 
             // Open connection string
@@ -495,7 +499,7 @@ class IMAP{
             }
 
             // Open the folder
-            if (!imap_reopen($this->Connection, $this->String . $folder, OP_READONLY, 0)) {
+            if (!imap_reopen($this->Connection, $this->String . $folder, 0, 0)) {
                 throw new Exception("Unable to open folder {$folder}");
             }
 
@@ -527,7 +531,7 @@ class IMAP{
             }
 
 			// Create the folder
-			if(imap_createmailbox($this->Connection, imap_utf7_encode($folder))){
+			if(imap_createmailbox($this->Connection, imap_utf7_encode($this->buildConnectionString($this->Host,$this->Port,$this->Encryption) . $folder))){
 
 				// Return True
 				return true;
@@ -720,7 +724,7 @@ class IMAP{
 			$uids = imap_search($this->Connection, $criteria, SE_UID);
 
             // Reverse order if needed
-            if($reverse){
+            if($reverse && is_array($uids)){
                 $uids = array_reverse($uids);
             }
 

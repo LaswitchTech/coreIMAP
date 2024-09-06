@@ -60,7 +60,7 @@ $Message = new Message();
 - [delete()](methods/IMAP/delete.md)
 - [draft()](methods/IMAP/draft.md)
 - [flag()](methods/IMAP/flag.md)
-- [getAttachements()](methods/IMAP/getAttachements.md)
+- [getAttachments()](methods/IMAP/getAttachments.md)
 - [getBcc()](methods/IMAP/getBcc.md)
 - [getBody()](methods/IMAP/getBody.md)
 - [getCc()](methods/IMAP/getCc.md)

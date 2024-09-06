@@ -78,50 +78,6 @@ class Message{
 		return ($this->Connection);
 	}
 
-    /**
-     * Get the list of available folders.
-     *
-     * @return array|void
-     * @throws Exception
-     */
-	private function getFolders(){
-		try {
-
-			// Check if a connection was established
-			if(!$this->isConnected()){
-				throw new Exception("No connection are established");
-			}
-
-			// Return the existing folders if already retrieved
-			if(count($this->Folders) > 0){
-				return $this->Folders;
-			}
-
-			// Get the list of available folders
-			$this->Folders = imap_list($this->Connection, $this->String, '*');
-
-			// Validate Folders
-			if(!$this->Folders) {
-				$this->Folders = array();
-			}
-
-			// Sanitize Folders
-			$Folders = [];
-			foreach($this->Folders as $Folder){
-				$Folders[] = str_replace($this->String,'',$Folder);
-			}
-			$this->Folders = $Folders;
-
-			// Debug Information
-			$this->Logger->debug("IMAP Folders: " . PHP_EOL . json_encode($this->Folders, JSON_UNESCAPED_SLASHES | JSON_PRETTY_PRINT));
-
-			// Return the list of available folders
-			return $this->Folders;
-		} catch (Exception $e) {
-			$this->Logger->error('IMAP Error: '.$e->getMessage());
-		}
-	}
-
 	/**
 	 * Get the headers of a message.
 	 *
@@ -129,22 +85,37 @@ class Message{
 	 */
 	private function getHeaders(){
 
-        // Check if message headers was already retrieved
+        // Check if message headers were already retrieved
         if($this->Headers){
 
             // Return Headers
             return $this->Headers;
         } else {
-            $headers = imap_rfc822_parse_headers($this->Message);
-            $result = array();
 
-            foreach ($headers as $header => $value) {
+            // Use imap_rfc822_parse_headers for standard headers
+            $parsedHeaders = imap_rfc822_parse_headers($this->Message);
+            $result = [];
+
+            // Process parsed headers into an associative array
+            foreach ($parsedHeaders as $header => $value) {
                 if (is_array($value)) {
                     foreach ($value as $subvalue) {
                         $result[$header][] = $subvalue;
                     }
                 } else {
                     $result[$header] = $value;
+                }
+            }
+
+            // Fetch raw headers for custom or non-standard headers
+            $rawHeaders = imap_fetchheader($this->Connection, $this->UID, FT_UID);
+
+            // Split headers into lines and look for custom headers (starting with 'X-' or any custom prefix)
+            $rawHeadersArray = explode("\n", $rawHeaders);
+            foreach ($rawHeadersArray as $headerLine) {
+                if (strpos($headerLine, 'X-') === 0) {
+                    list($key, $value) = explode(":", $headerLine, 2);
+                    $result[trim($key)] = trim($value);
                 }
             }
 
@@ -157,6 +128,92 @@ class Message{
             // Return Headers
             return $this->Headers;
         }
+	}
+
+	/**
+	 * Get the Size of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getSize(){
+
+        // Check if message Sender was already retrieved
+        if($this->Overview === null){
+
+            // Retrieve Overview
+            $this->getOverview();
+        }
+
+        // Return Size
+        return $this->Overview['size'];
+	}
+
+	/**
+	 * Get the in-reply-to mid of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getInReplyTo(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+        // Return
+        return str_replace(['<','>'],'',$this->Headers['in_reply_to']);
+	}
+
+	/**
+	 * Get the References mids of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getReferences(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+
+        // Return
+        return explode(' ',str_replace(['<','>'],'',$this->Headers['references']));
+	}
+
+	/**
+	 * Get the Customs Headers of a message.
+	 *
+	 * @return array|void
+	 */
+	public function getCustoms(){
+
+        // Check if message Sender was already retrieved
+        if($this->Headers === null){
+
+            // Retrieve Headers
+            $this->getHeaders();
+        }
+
+        // Set a list of standard headers
+        $standardHeaders = ['date','Date','to','toaddress','sender','senderaddress','from','fromaddress','sender','cc','bcc','references','in_reply_to','reply_to','reply_toaddress','subject','Subject','date','message_id'];
+
+        // Initialize Customs
+        $Customs = [];
+
+        // Sanitize Headers
+        foreach($this->Headers as $key => $value){
+            if(!in_array($key,$standardHeaders)){
+                $Customs[$key] = json_decode($value,true) ?? $value;
+            }
+        }
+
+        // Return Size
+        return $Customs;
 	}
 
 	/**
@@ -559,6 +616,11 @@ class Message{
                 // Sanitize Subject
                 $Subject = trim($Subject);
 
+                // Check if Subject is encoded
+                if(preg_match('/=\?/', $Subject)){
+                    $Subject = imap_utf8($Subject);
+                }
+
                 // Debug Information
                 $this->Logger->debug("IMAP Message Subject: {$Subject}");
 
@@ -729,22 +791,19 @@ class Message{
 		}
 	}
 
-	/**
-	 * Retrieve the body of a message.
-	 *
-	 * @return string|null
-	 * @throws Exception
-	 */
-	public function getBody() {
+    /**
+     * Retrieve the body of a message.
+     *
+     * @return string|null
+     * @throws Exception
+     */
+    public function getBody() {
 
         // Check if message body was already retrieved
-        if($this->Body){
-
-            // Return Body
+        if ($this->Body) {
             return $this->Body;
         } else {
-            try{
-
+            try {
                 // Initialize $bodies
                 $bodies = [];
 
@@ -752,32 +811,42 @@ class Message{
                 $parts = $this->getParts($this->Message);
 
                 // Find Body Parts
-                foreach($parts as $part){
+                foreach ($parts as $part) {
                     // Find the content type of the part
                     preg_match('/Content-Type:\s*([^\s;]+)/i', $part, $matches);
-                    if(isset($matches[1])){
+                    if (isset($matches[1])) {
                         $contentType = strtolower(trim($matches[1]));
 
                         // Debug Information
                         $this->Logger->debug("contentType: {$contentType}");
 
-                        // Keep body parts if usefull
-                        if(in_array($contentType,['text/plain','text/html'])){
-                            $bodies[$contentType] = $part;
+                        // Keep body parts if useful
+                        if (in_array($contentType, ['text/plain', 'text/html'])) {
+                            // Check for content transfer encoding
+                            preg_match('/Content-Transfer-Encoding:\s*([^\s;]+)/i', $part, $encodingMatches);
+                            $encoding = isset($encodingMatches[1]) ? strtolower(trim($encodingMatches[1])) : null;
+
+                            // Store the body and its encoding
+                            $bodies[$contentType] = [
+                                'content' => $part,
+                                'encoding' => $encoding
+                            ];
                         }
                     }
                 }
 
                 // Select a part as the message
-                if(isset($bodies['text/html'])){
-                    $content = $bodies['text/html'];
+                if (isset($bodies['text/html'])) {
+                    $selectedBody = $bodies['text/html'];
+                } elseif (isset($bodies['text/plain'])) {
+                    $selectedBody = $bodies['text/plain'];
                 } else {
-                    if(isset($bodies['text/plain'])){
-                        $content = $bodies['text/plain'];
-                    } else {
-                        throw new Exception("Unable to identify the body");
-                    }
+                    throw new Exception("Unable to identify the body");
                 }
+
+                // Extract content and encoding
+                $content = $selectedBody['content'];
+                $encoding = $selectedBody['encoding'];
 
                 // Split the message into an array of lines
                 $lines = preg_split('/\r\n|\r|\n/', $content);
@@ -788,12 +857,12 @@ class Message{
                 // Find the first line of the body
                 $start = false;
                 $body = '';
-                foreach($lines as $line){
-                    if($line !== null && $line === ""){
+                foreach ($lines as $line) {
+                    if ($line !== null && $line === "") {
                         // Found the start of the body
                         $start = true;
                     }
-                    if($start){
+                    if ($start) {
                         // Concatenate the lines to form the body
                         $body .= $line . PHP_EOL;
                     }
@@ -802,8 +871,15 @@ class Message{
                 // Trim $body
                 $body = trim($body);
 
+                // Decode body based on the content transfer encoding
+                if ($encoding === 'base64') {
+                    $body = base64_decode($body);
+                } elseif ($encoding === 'quoted-printable') {
+                    $body = quoted_printable_decode($body);
+                }
+
                 // Debug Information
-                $this->Logger->debug("IMAP Message Body: " . PHP_EOL . $body);
+                $this->Logger->debug("IMAP Decoded Message Body: " . PHP_EOL . $body);
 
                 // Store Body
                 $this->Body = $body;
@@ -811,10 +887,10 @@ class Message{
                 // Return Body
                 return $this->Body;
             } catch (Exception $e) {
-                $this->Logger->error('IMAP Error: '.$e->getMessage());
+                $this->Logger->error('IMAP Error: ' . $e->getMessage());
             }
         }
-	}
+    }
 
 	/**
 	 * Get Overview of message.
@@ -1060,15 +1136,12 @@ class Message{
 	 */
 	public function delete(){
 		try {
+
+            // Set the DELETED flag on the message identified by the UID.
+            $this->setFlag('Deleted');
+
 			// Mark the message as deleted
-            $result = imap_delete($this->Connection, $this->UID, FT_UID);
-
-            if ($result) {
-            // Expunge deleted messages
-            imap_expunge($this->Connection);
-            }
-
-            return $result;
+            return imap_delete($this->Connection, $this->UID, FT_UID);
 		} catch (Exception $e) {
 			$this->Logger->error('IMAP Error: '.$e->getMessage());
 		}
@@ -1092,16 +1165,11 @@ class Message{
             if(!is_string($folder)) {
                 throw new Exception("This folder is invalid");
             }
-            if(!in_array($folder,$this->getFolders())) {
-                throw new Exception("This folder does not exist");
-            }
 
 			// Copy the message
 			$result = imap_mail_copy($this->Connection, $this->getUid(), $folder, CP_UID);
 
 			if($result){
-				// Expunge deleted messages
-	            imap_expunge($this->Connection);
 
 				// Return true
 				return true;
@@ -1135,21 +1203,16 @@ class Message{
             if(!is_string($folder)) {
                 throw new Exception("This folder is invalid");
             }
-            if(!in_array($folder,$this->getFolders())) {
-                throw new Exception("This folder does not exist");
-            }
 
 			// Move the message
-			$result = imap_mail_move($this->Connection, $this->getUid(), $folder, CP_UID);
-
-			if($result){
-				// Expunge deleted messages
-	            imap_expunge($this->Connection);
+			if(imap_mail_move($this->Connection, $this->getUid(), $folder, CP_UID)){
 
 				// Return true
 				return true;
 			} else {
-				throw new Exception("Unable to copy message into the folder specified");
+
+                // Log error
+				throw new Exception("Unable to move message into the folder specified");
 			}
 
 		} catch (Exception $e) {
@@ -1166,11 +1229,15 @@ class Message{
 	 * @return string|boolean File path if the file was saved successfully, false otherwise.
      * @throws Exception
 	 */
-	public function save() {
+	public function save($directory = null) {
 		try{
 
-			// Generate directory
-            $directory = $this->Directory . DIRECTORY_SEPARATOR . $this->getUid();
+            // Check if path was provided
+            if($directory === null){
+
+                // Generate directory
+                $directory = $this->Directory . DIRECTORY_SEPARATOR . $this->getUid();
+            }
 
 			// Generate file path
             $filepath = $directory . DIRECTORY_SEPARATOR . $this->getId() . ".eml";
