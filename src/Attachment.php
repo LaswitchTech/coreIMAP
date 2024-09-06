@@ -240,6 +240,20 @@ class Attachment{
 				// Check if filename was found
 				if($filename){
 
+                    // Decode the MIME-encoded string
+                    $decoded_parts = imap_mime_header_decode($filename);
+
+                    // Initialize the decoded text
+                    $decoded_text = '';
+
+                    // Loop through the decoded parts
+                    foreach ($decoded_parts as $part) {
+                        $decoded_text .= $part->text;
+                    }
+
+                    // Set the filename
+                    $filename = $decoded_text;
+
 					// Debug Information
 					$this->Logger->debug("filename: {$filename}");
 
