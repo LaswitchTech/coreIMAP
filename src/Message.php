@@ -616,6 +616,11 @@ class Message{
                 // Sanitize Subject
                 $Subject = trim($Subject);
 
+                // Check if Subject is encoded
+                if(preg_match('/=\?/', $Subject)){
+                    $Subject = imap_utf8($Subject);
+                }
+
                 // Debug Information
                 $this->Logger->debug("IMAP Message Subject: {$Subject}");
 
