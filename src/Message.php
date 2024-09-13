@@ -180,9 +180,14 @@ class Message{
             $this->getHeaders();
         }
 
+        // Retrieve References
+        $References = array_filter(explode(' ',str_replace(['<','>'],'',$this->Headers['references'])));
+
+        // Remove Empty Values
+        $References = array_filter($References);
 
         // Return
-        return explode(' ',str_replace(['<','>'],'',$this->Headers['references']));
+        return $References;
 	}
 
 	/**
