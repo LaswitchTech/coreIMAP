@@ -162,10 +162,13 @@ class Message{
             $this->getHeaders();
         }
 
-        // Return
-        if(isset($this->Headers['in_reply_to'])){
-            return str_replace(['<','>'],'',$this->Headers['in_reply_to']);
+        // Check if headers contains References
+        if(!isset($this->Headers['in_reply_to'])){
+            return null;
         }
+
+        // Return
+        return str_replace(['<','>'],'',$this->Headers['in_reply_to']);
 	}
 
 	/**
