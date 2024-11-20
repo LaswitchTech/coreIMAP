@@ -162,6 +162,11 @@ class Message{
             $this->getHeaders();
         }
 
+        // Check if headers contains References
+        if(!isset($this->Headers['in_reply_to'])){
+            return null;
+        }
+
         // Return
         return str_replace(['<','>'],'',$this->Headers['in_reply_to']);
 	}
@@ -178,6 +183,11 @@ class Message{
 
             // Retrieve Headers
             $this->getHeaders();
+        }
+
+        // Check if headers contains References
+        if(!isset($this->Headers['references'])){
+            return [];
         }
 
         // Retrieve References
